@@ -4,18 +4,11 @@
 
 using namespace std;
 
-class LexerTest : public ::testing::Test {
-protected:
-    void SetUp() override {
-        input = "=+(){},;";
-        lexer = Lexer(input);
-    }
+// Define a test case
+TEST(LexerTest, NextToken) {
+    string input = "=+(){},;";
+    Lexer lexer(input);
 
-    Lexer lexer;
-    string input;
-};
-
-TEST_F(LexerTest, spitToken) {
     vector<pair<TokenType, string>> expectedTokens = {
         {ASSIGN, "="},
         {PLUS, "+"},
@@ -28,10 +21,15 @@ TEST_F(LexerTest, spitToken) {
         {MYEOF, ""}
     };
 
-    for (const auto& expected : expectedTokens) {
-        auto tok = lexer.spitToken();
-        EXPECT_EQ(tok.type, expected.first); 
-        EXPECT_EQ(tok.val, expected.second);
+    int i = 0;
+    while (true) {
+        Token tok = lexer.spitToken();
+        if (tok.type == MYEOF) {
+            break;
+        }
+        EXPECT_EQ(tok.type, expectedTokens[i].first);
+        EXPECT_EQ(tok.val, expectedTokens[i].second);
+        i++;
     }
 }
 
