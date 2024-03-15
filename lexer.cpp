@@ -5,6 +5,10 @@ interpreter will support ascii, not
 unicode.  what is the difference?
 
 switch statements do not make checks one by one, so how is precedence decided here?
+
+create type to string mapping for repl debugging
+
+break up lexer into token and lexer
 */
 
 #include "lexer.hpp"
