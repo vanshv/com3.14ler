@@ -18,6 +18,20 @@ enum TokenType{
     IDENT,
     INT,
     FUNCTION,
+    ILLEGAL,
+    MINUS,
+    BANG,
+    ASTERISK,
+    SLASH,
+    LT,
+    GT,
+    IF,
+    ELSE,
+    RETURN,
+    EQ,
+    NOT_EQ,
+    TRUE,
+    FALSE,
 };
 
 class Token{
@@ -31,15 +45,21 @@ class Token{
 class Lexer{
     public: 
         string input;
-        char ch;
-        int pos;
-        int redpos; // or readpos
-        vector<Token> output;
+        char ch; //points to pos
+        int pos; //points to ch
+        int nextpos; // next pos after pos
+
+        map<string, TokenType> keywords;
 
         Lexer(string input);
         void readChar();
         Token spitToken();
+        void setKeywords();
+        void eatWhiteSpace();
+        bool isLetter();
+        bool isDigit();
+        string readNumber();
+        string readIdentifier();
 };
-
 
 #endif // LEXER_H
