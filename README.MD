@@ -1,7 +1,7 @@
 # Testing
-Compile and test the lexer by running the commands
+Compile and test the parser by running the commands
 
 ```console
-> g++ -o test lexer.cpp lexer-test.cpp -lgtest -lgtest_main -pthread
+> g++ -o test lexer.cpp parser.cpp ast.cpp parser-test.cpp
 > ./test
 ```

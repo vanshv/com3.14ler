@@ -4,7 +4,7 @@
 #include<bits/stdc++.h>
 using namespace std;
 
-enum TokenType{
+enum TokenType {
     ASSIGN,
     SEMICOLON,
     LPAREN,

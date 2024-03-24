@@ -27,7 +27,37 @@ class Identifier : public Expression {
         string tokenLiteral() override;
         string String() override;
 };
-// write tests for Identifier
+
+class IntegerLiteral : public Expression{
+    public:
+        Token tok;
+        int value;
+
+        string tokenLiteral() override;
+        string String() override;
+};
+
+class PrefixExpression : public Expression{
+    public:
+        Token tok;
+        string op;
+        Expression* right;
+
+        string tokenLiteral() override;
+        string String() override;
+};
+
+class InfixExpression : public Expression{
+    public:
+        Token tok;
+        string op;
+        Expression* right;
+        Expression* left;
+
+        string tokenLiteral() override;
+        string String() override;
+};
+
 
 // sub-statements do not need constructors
 // parsing might fail, so we need to allocate bit-by-bit

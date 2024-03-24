@@ -56,6 +56,39 @@ string ExpressionStatement::String(){
     return "";
 }
 
+string IntegerLiteral::tokenLiteral(){
+    return tok.val;
+}
+
+string IntegerLiteral::String(){
+    return to_string(value);
+}
+
+string PrefixExpression::tokenLiteral(){
+    return tok.val;
+}
+
+string PrefixExpression::String(){
+    string ret = "(";
+    ret += op;
+    ret += right->String();
+    ret += ")";
+    return ret;
+}
+
+string InfixExpression::tokenLiteral(){
+    return tok.val;
+}
+
+string InfixExpression::String(){
+    string ret = "(";
+    ret += left->String();
+    ret += op;
+    ret += right->String();
+    ret += ")";
+    return ret;
+}
+
 string Program::tokenLiteral(){
     if(!statements.empty()){
         return statements[0]->tokenLiteral();

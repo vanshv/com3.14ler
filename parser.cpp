@@ -14,6 +14,34 @@ Parser::Parser(Lexer* l){
 
     //set up parser functions
     registerPrefix(IDENT, &Parser::parseIdentifier);
+    registerPrefix(INT, &Parser::parseIntegerLiteral);
+    registerPrefix(BANG, &Parser::parsePrefixExpression);
+    registerPrefix(MINUS, &Parser::parsePrefixExpression);
+
+    registerInfix(PLUS, &Parser::parseInfixExpression);
+    registerInfix(MINUS, &Parser::parseInfixExpression);
+    registerInfix(SLASH, &Parser::parseInfixExpression);
+    registerInfix(ASTERISK, &Parser::parseInfixExpression);
+    registerInfix(EQ, &Parser::parseInfixExpression);
+    registerInfix(NOT_EQ, &Parser::parseInfixExpression);
+    registerInfix(LT, &Parser::parseInfixExpression);
+    registerInfix(GT, &Parser::parseInfixExpression);
+}
+
+Prenum Parser::precedences(TokenType t){
+    switch(t)
+    {
+        case EQ:        return EQUALS;
+        case NOT_EQ:    return EQUALS;
+        case LT:        return LESSGREATER;
+        case GT:        return LESSGREATER;
+        case PLUS:      return SUM;
+        case MINUS:     return SUM;
+        case SLASH:     return PRODUCT;
+        case ASTERISK:  return PRODUCT;
+        default:        return LOWEST;
+    }
+    return LOWEST;
 }
 
 void Parser::eatToken(){
@@ -111,14 +139,29 @@ ExpressionStatement* Parser::parseExpressionStatement(){
     return expStmt;
 }
 
-//map<TokenType, Expression* (Parser::*) ()> prefixParseFns;
+void Parser::noPrefixParseFnError(){
+    cout<<"no prefix parse function found for "<<currToken.val<<"\n";
+    //errors.append();
+}
+
 Expression* Parser::parseExpression(int precedence){
     auto prefix = prefixParseFns[currToken.type];
     if(prefix == nullptr){
+        noPrefixParseFnError();
         return nullptr;
     }
 
     Expression *leftExp = (this->*prefix)();
+    while(!peekTokenis(SEMICOLON) && precedence < peekPrecedence()){
+        auto infix = infixParseFns[peekToken.type];
+        if(infix == nullptr){
+            return leftExp;
+        }
+
+        eatToken();
+
+        leftExp = (this->*infix)(leftExp);
+    }
 
     return leftExp;
 }
@@ -126,6 +169,37 @@ Expression* Parser::parseExpression(int precedence){
 Expression* Parser::parseIdentifier(){
     Identifier* id = new Identifier(currToken, currToken.val);
     return id;
+}
+
+Expression* Parser::parseIntegerLiteral(){
+    IntegerLiteral *il = new IntegerLiteral();
+    il->tok = currToken;
+    il->value = stoi(currToken.val);
+    return il;
+}
+
+Expression* Parser::parsePrefixExpression(){
+    PrefixExpression* pe = new PrefixExpression();
+    pe->tok = currToken;
+    pe->op = currToken.val;
+    
+    eatToken();
+    pe->right = parseExpression(PREFIX);
+
+    return pe;
+}
+
+Expression* Parser::parseInfixExpression(Expression* left){
+    InfixExpression* ie = new InfixExpression();
+    ie->tok = currToken;
+    ie->op = currToken.val;
+    ie->left = left;
+    
+    Prenum prec = currPrecedence();
+    eatToken();
+    ie->right = parseExpression(prec);
+
+    return ie;
 }
 
 void Parser::peekError(TokenType ttype){
@@ -143,11 +217,18 @@ void Parser::checkParserErrors(){
     }
 }
 
-// map<TokenType, Expression* ()> prefixParseFns;
 void Parser::registerPrefix(TokenType ttype, Expression* (Parser::*fn) ()) {
     prefixParseFns[ttype] = fn;
 }
 
 void Parser::registerInfix(TokenType ttype, Expression* (Parser::*fn) (Expression*)) {
     infixParseFns[ttype] = fn;
+}
+
+Prenum Parser::peekPrecedence(){
+    return precedences(peekToken.type);
+}
+
+Prenum Parser::currPrecedence(){
+    return precedences(currToken.type);
 }
