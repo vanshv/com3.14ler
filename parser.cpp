@@ -2,19 +2,7 @@
 expression return values and statements don't
 for our context it is true, might not generlize
 
-the parser just contains a pointer to the lexer
-
-do i even bother with error-checking?
-
-do i need to implement the way he does, 
-isn't my way better?
-
-think - what will peekError do?
-I don't think I need to write testcases with equal to checks,
-if it not parse-able it will throw an error itself.
-
-maybe i don't even need gtest this way, could be nice.
-
+lmao function pointers wtf
 */
 
 #include "parser.hpp"
@@ -23,6 +11,9 @@ Parser::Parser(Lexer* l){
     this->l = l;
     eatToken();
     eatToken();
+
+    //set up parser functions
+    registerPrefix(IDENT, &Parser::parseIdentifier);
 }
 
 void Parser::eatToken(){
@@ -51,7 +42,7 @@ Statement* Parser::parseStatement(){
         case RETURN:
             return parseReturnStatement();
         default:
-            return nullptr;            
+            return parseExpressionStatement();            
     }
 }
 
@@ -108,6 +99,35 @@ ReturnStatement* Parser::parseReturnStatement(){
     return rstmt;
 }
 
+ExpressionStatement* Parser::parseExpressionStatement(){
+    ExpressionStatement *expStmt = new ExpressionStatement();
+    expStmt->tok = currToken;
+    expStmt->expression = parseExpression(LOWEST);
+
+    if(peekTokenis(SEMICOLON)){
+        eatToken();
+    }
+
+    return expStmt;
+}
+
+//map<TokenType, Expression* (Parser::*) ()> prefixParseFns;
+Expression* Parser::parseExpression(int precedence){
+    auto prefix = prefixParseFns[currToken.type];
+    if(prefix == nullptr){
+        return nullptr;
+    }
+
+    Expression *leftExp = (this->*prefix)();
+
+    return leftExp;
+}
+
+Expression* Parser::parseIdentifier(){
+    Identifier* id = new Identifier(currToken, currToken.val);
+    return id;
+}
+
 void Parser::peekError(TokenType ttype){
     errors.push_back({ttype, currToken.type});
 }
@@ -121,4 +141,13 @@ void Parser::checkParserErrors(){
     for(auto [a, b] : errors){
         cout<<a<<" "<<b<<"\n";
     }
+}
+
+// map<TokenType, Expression* ()> prefixParseFns;
+void Parser::registerPrefix(TokenType ttype, Expression* (Parser::*fn) ()) {
+    prefixParseFns[ttype] = fn;
+}
+
+void Parser::registerInfix(TokenType ttype, Expression* (Parser::*fn) (Expression*)) {
+    infixParseFns[ttype] = fn;
 }

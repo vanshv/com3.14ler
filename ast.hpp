@@ -8,6 +8,8 @@ using namespace std;
 class Node{
     public:
         virtual string tokenLiteral() = 0;
+        virtual string String() = 0;
+        // write tester for String output   
 };
 
 class Statement : public Node{
@@ -16,39 +18,53 @@ class Statement : public Node{
 class Expression : public Node{
 };
 
-class Identifier : Expression {
+class Identifier : public Expression {
     public:
         Token tok;
         string value;
-        string tokenLiteral() override;
-        Identifier(Token tok, string value);
-};
 
+        Identifier(Token tok, string value);
+        string tokenLiteral() override;
+        string String() override;
+};
+// write tests for Identifier
+
+// sub-statements do not need constructors
+// parsing might fail, so we need to allocate bit-by-bit
 class LetStatement : public Statement{
     public:
-        LetStatement();
-        string tokenLiteral() override;
         Token tok;
         Identifier *name;
         Expression *value;
+
+        string tokenLiteral() override;
+        string String() override;
 };
 
 class ReturnStatement : public Statement{
     public:
-        ReturnStatement();
-        string tokenLiteral() override;
         Token tok;
         Expression *value;
+
+        string tokenLiteral() override;
+        string String() override;
 };
 
-//should this be statements or statement pointers?
-class Program{
+class ExpressionStatement : public Statement{
+    public:
+        Token tok;
+        Expression *expression;
+
+        string tokenLiteral() override;
+        string String() override;
+};
+
+class Program : public Node{
     public:
         vector<Statement*> statements;
-        // Program(){
 
-        // }
         string tokenLiteral();  
+        string String();
 };
 
 #endif // AST_H
