@@ -13,6 +13,7 @@ enum Prenum {
     PREFIX = 5,
     CALL = 6,
 };
+//higher precedence is evaluated first
 
 class Parser{
     public:
@@ -20,7 +21,9 @@ class Parser{
         Token currToken;
         Token peekToken;
         vector<pair<TokenType, TokenType>> errors;
-        //expected, actual token type
+        // expected, actual token type
+
+        // could turn these maps to loopup tables
         map<TokenType, Expression* (Parser::*) ()> prefixParseFns;
         map<TokenType, Expression* (Parser::*) (Expression*)> infixParseFns;
         Prenum precedences(TokenType);
@@ -31,19 +34,27 @@ class Parser{
         bool expectPeek(TokenType ttype);
         bool currTokenis(TokenType ttype);
         bool peekTokenis(TokenType ttype);
-        Prenum peekPrecedence();
-        Prenum currPrecedence();
 
         Program* parseProgram();
         Statement* parseStatement();
+        //can i replace these with statement pointers?
+        //should i?
         LetStatement* parseLetStatement();
         ReturnStatement* parseReturnStatement();
         ExpressionStatement* parseExpressionStatement();
+        BlockStatement* parseBlockStatement();
         Expression* parseExpression(int precedence);
         Expression* parseIdentifier();
         Expression* parseIntegerLiteral();
         Expression* parsePrefixExpression();
         Expression* parseInfixExpression(Expression* );
+        Expression* parseBoolean();
+        Expression* parseGroupedExpression();
+        Expression* parseIfExpression();
+        Expression* parseFunctionLiteral();
+        vector<Identifier*> parseParameters(); 
+        Expression* parseCallExpression(Expression* );
+        vector<Expression*> parseCallArguements();
 
         void checkParserErrors();
         void peekError(TokenType ttype);

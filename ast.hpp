@@ -9,7 +9,6 @@ class Node{
     public:
         virtual string tokenLiteral() = 0;
         virtual string String() = 0;
-        // write tester for String output   
 };
 
 class Statement : public Node{
@@ -32,6 +31,35 @@ class IntegerLiteral : public Expression{
     public:
         Token tok;
         int value;
+
+        string tokenLiteral() override;
+        string String() override;
+};
+
+class BlockStatement: public Statement{
+    public:
+        Token tok; // {
+        vector<Statement*> stmts;
+
+        string tokenLiteral() override;
+        string String() override;
+};
+
+class FunctionLiteral : public Expression{
+    public:
+        Token tok;
+        vector<Identifier*> parameters;
+        BlockStatement* body;
+
+        string tokenLiteral() override;
+        string String() override;
+};
+
+class CallExpression: public Expression{
+    public:
+        Token tok; // (
+        Expression* function; // can be Identifier or FunctionLiteral
+        vector<Expression*> args;
 
         string tokenLiteral() override;
         string String() override;
@@ -88,6 +116,29 @@ class ExpressionStatement : public Statement{
         string tokenLiteral() override;
         string String() override;
 };
+
+class Boolean : public Expression{
+    public:
+        Token tok;
+        bool value;
+
+        string tokenLiteral() override;
+        string String() override;
+};
+
+//why is if an expression? what does it return?
+class IfExpression: public Expression{
+    public:
+        Token tok;
+        Expression* condition;
+        BlockStatement* conseq;
+        BlockStatement* alt;
+
+        string tokenLiteral() override;
+        string String() override;
+};
+
+
 
 class Program : public Node{
     public:

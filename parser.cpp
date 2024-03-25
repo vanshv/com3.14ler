@@ -2,7 +2,13 @@
 expression return values and statements don't
 for our context it is true, might not generlize
 
+
+skipped
 lmao function pointers wtf
+pratt parser working
+cleaning up test suite
+adding booleans to tests
+grouped expressions and below
 */
 
 #include "parser.hpp"
@@ -13,10 +19,16 @@ Parser::Parser(Lexer* l){
     eatToken();
 
     //set up parser functions
+    //could set up lookup table instead of maps
     registerPrefix(IDENT, &Parser::parseIdentifier);
     registerPrefix(INT, &Parser::parseIntegerLiteral);
     registerPrefix(BANG, &Parser::parsePrefixExpression);
     registerPrefix(MINUS, &Parser::parsePrefixExpression);
+    registerPrefix(TRUE, &Parser::parseBoolean);
+    registerPrefix(FALSE, &Parser::parseBoolean);
+    registerPrefix(LPAREN, &Parser::parseGroupedExpression);
+    registerPrefix(IF, &Parser::parseIfExpression);
+    registerPrefix(FUNCTION, &Parser::parseFunctionLiteral);
 
     registerInfix(PLUS, &Parser::parseInfixExpression);
     registerInfix(MINUS, &Parser::parseInfixExpression);
@@ -26,6 +38,7 @@ Parser::Parser(Lexer* l){
     registerInfix(NOT_EQ, &Parser::parseInfixExpression);
     registerInfix(LT, &Parser::parseInfixExpression);
     registerInfix(GT, &Parser::parseInfixExpression);
+    registerInfix(LPAREN, &Parser::parseCallExpression);
 }
 
 Prenum Parser::precedences(TokenType t){
@@ -39,7 +52,7 @@ Prenum Parser::precedences(TokenType t){
         case MINUS:     return SUM;
         case SLASH:     return PRODUCT;
         case ASTERISK:  return PRODUCT;
-        default:        return LOWEST;
+        case LPAREN:    return CALL;
     }
     return LOWEST;
 }
@@ -106,9 +119,11 @@ LetStatement* Parser::parseLetStatement(){
         return nullptr;
     }
 
-    //todo: parse expression
+    eatToken();
 
-    while(currToken.type != SEMICOLON){
+    lstmt->value = parseExpression(LOWEST);
+
+    if(peekToken.type == SEMICOLON){
         eatToken();
     }
 
@@ -120,10 +135,14 @@ ReturnStatement* Parser::parseReturnStatement(){
 
     rstmt->tok = currToken;
 
-    while(currToken.type != SEMICOLON){
+    eatToken();
+
+    rstmt->value = parseExpression(LOWEST);
+
+    if(peekToken.type == SEMICOLON){
         eatToken();
     }
-    
+
     return rstmt;
 }
 
@@ -152,7 +171,7 @@ Expression* Parser::parseExpression(int precedence){
     }
 
     Expression *leftExp = (this->*prefix)();
-    while(!peekTokenis(SEMICOLON) && precedence < peekPrecedence()){
+    while(!peekTokenis(SEMICOLON) && precedence < precedences(peekToken.type)){
         auto infix = infixParseFns[peekToken.type];
         if(infix == nullptr){
             return leftExp;
@@ -195,11 +214,154 @@ Expression* Parser::parseInfixExpression(Expression* left){
     ie->op = currToken.val;
     ie->left = left;
     
-    Prenum prec = currPrecedence();
+    Prenum prec = precedences(currToken.type);
     eatToken();
     ie->right = parseExpression(prec);
 
     return ie;
+}
+
+Expression* Parser::parseBoolean(){
+    Boolean* bo = new Boolean();
+    bo->tok = currToken;
+    bo->value = (currToken.type == TRUE);
+
+    return bo;
+}
+
+Expression* Parser::parseGroupedExpression(){
+    eatToken();
+
+    Expression* ex = parseExpression(LOWEST);
+    if(!expectPeek(LPAREN)){
+        return nullptr;
+    }
+
+    return ex;
+}
+
+Expression* Parser::parseIfExpression(){
+    IfExpression* ie = new IfExpression();
+    ie->tok = currToken;
+
+    if(!expectPeek(LPAREN)){
+        return nullptr;
+    }
+
+    eatToken();
+    ie->condition = parseExpression(LOWEST);
+
+    if(!expectPeek(RPAREN)){
+        return nullptr;
+    }
+    if(!expectPeek(LBRACE)){
+        return nullptr;
+    }
+
+    ie->conseq = parseBlockStatement();
+
+    if(peekToken.type == ELSE){
+        eatToken();
+        if(expectPeek(RPAREN)){
+            return nullptr;
+        }
+        ie->alt = parseBlockStatement();
+    }
+
+    return ie;
+}
+
+BlockStatement* Parser::parseBlockStatement(){
+    BlockStatement* bs = new BlockStatement();
+    bs->tok = currToken;
+
+    eatToken();
+
+    while(peekToken.type != RBRACE && peekToken.type != MYEOF){
+        Statement* st = parseStatement();
+        if(st != nullptr){
+            bs->stmts.push_back(st);
+        }
+        eatToken(); //semicolon 
+    }
+
+    return bs;
+}
+
+Expression* Parser::parseFunctionLiteral(){
+    FunctionLiteral* fl = new FunctionLiteral();
+    fl->tok = currToken;
+
+    if(!expectPeek(LPAREN)){
+        return nullptr;
+    }
+
+    fl->parameters = parseParameters();
+
+    if(!expectPeek(LBRACE)){
+        return nullptr;
+    }
+
+    fl->body = parseBlockStatement();
+
+    return fl;
+}
+
+vector<Identifier*> Parser::parseParameters(){
+    vector<Identifier*> params;
+    if(expectPeek(RBRACE)){
+        return params;
+    }
+    eatToken();
+
+    Identifier* id = new Identifier(currToken, currToken.val);
+    params.push_back(id);
+    while(peekToken.type != RBRACE){
+        eatToken();
+        eatToken();
+        Identifier* id = new Identifier(currToken, currToken.val);
+        params.push_back(id);
+    }
+
+    if(!expectPeek(RPAREN)){
+        params.clear();
+    }
+
+    return params;
+}
+
+Expression* Parser::parseCallExpression(Expression* left){
+    CallExpression* ce = new CallExpression();
+    ce->tok = currToken;
+    ce->function = left;
+    ce->args = parseCallArguements();
+
+    return ce;
+}
+
+vector<Expression*> Parser::parseCallArguements(){
+    vector<Expression*> args;
+
+    if(expectPeek(RBRACE)){
+        return args;
+    }
+
+    eatToken();
+    Expression* exp = parseExpression(LOWEST);
+    args.push_back(exp);
+
+    if(peekToken.type == COMMA){
+        eatToken();
+        eatToken();
+        Expression* exp = parseExpression(LOWEST);
+        args.push_back(exp);
+    }
+
+    if(!expectPeek(RPAREN)){
+        args.clear();
+    }
+
+    return args;
 }
 
 void Parser::peekError(TokenType ttype){
@@ -223,12 +385,4 @@ void Parser::registerPrefix(TokenType ttype, Expression* (Parser::*fn) ()) {
 
 void Parser::registerInfix(TokenType ttype, Expression* (Parser::*fn) (Expression*)) {
     infixParseFns[ttype] = fn;
-}
-
-Prenum Parser::peekPrecedence(){
-    return precedences(peekToken.type);
-}
-
-Prenum Parser::currPrecedence(){
-    return precedences(currToken.type);
 }
