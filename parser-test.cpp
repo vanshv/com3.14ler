@@ -104,8 +104,8 @@ void testString(){
 
     prog->statements.push_back(letStmt);
 
-    if(prog->String() != "let myVar = anotherVar;"){
-        cout<<"program.String() wrong. got=" << prog->String() << "\n";
+    if(prog->toString() != "let myVar = anotherVar;"){
+        cout<<"program.toString() wrong. got=" << prog->toString() << "\n";
         return;
     }
     cout<<"testString passed\n";
@@ -342,7 +342,7 @@ void testOperatorPrecedenceParsing(){
 
         parser.checkParserErrors();
 
-        string actual = program->String();
+        string actual = program->toString();
         if (actual != tt.expected) {
             cout << "Test failed for input: " << tt.input << endl;
             cout << "Expected: " << tt.expected << ", Got: " << actual << endl;

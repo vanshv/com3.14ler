@@ -4,6 +4,7 @@
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "ast.hpp"
+#include "obj.hpp"
 
 using namespace std;
 
@@ -22,7 +23,10 @@ int main() {
             continue;
         }
         for(auto i : prog->statements){
-            cout<<i->String();
+            Obj* o = i->eval();
+            if(o->Type() != NULL_OBJ){
+                cout<<o->Inspect();
+            }
         }
 
         cout << "\n" << PROMPT;

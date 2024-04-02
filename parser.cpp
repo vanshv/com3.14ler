@@ -233,7 +233,7 @@ Expression* Parser::parseGroupedExpression(){
     eatToken();
 
     Expression* ex = parseExpression(LOWEST);
-    if(!expectPeek(LPAREN)){
+    if(!expectPeek(RPAREN)){
         return nullptr;
     }
 
