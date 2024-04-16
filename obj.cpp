@@ -46,3 +46,59 @@ string NullObj::Inspect(){
 }
 
 //
+
+ReturnObj::ReturnObj(Obj* val){
+    this->val = val;
+}
+
+ObjType ReturnObj::Type(){
+    return RETURN_OBJ;
+}
+
+string ReturnObj::Inspect(){
+    string str = val->Inspect();
+    return str;
+}
+
+//
+
+ErrorObj::ErrorObj(string msg){
+    this->message = msg;
+}
+
+ObjType ErrorObj::Type(){
+    return ERROR_OBJ;
+}
+
+string ErrorObj::Inspect(){
+    return "Error: " + message;
+}
+
+//
+
+Environment::Environment(){
+    this->outer = nullptr;
+}
+
+//create a new env inside our env
+Environment* Environment::enclose(Environment* outer){
+    Environment* env = new Environment();
+    env->outer = outer;
+    return env;
+}
+
+Obj* Environment::get(string ident){
+    if(envmap.find(ident) == envmap.end()){
+        if(outer != nullptr){
+            return outer->get(ident);
+        }
+        return nullptr;
+    }
+    return envmap[ident];
+}
+
+void Environment::set(string ident, Obj* o){
+    envmap[ident] = o;
+}
+
+//

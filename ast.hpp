@@ -7,11 +7,13 @@
 
 using namespace std;
 
+
+
 class Node{
     public:
         virtual string tokenLiteral() = 0;
         virtual string toString() = 0;
-        virtual Obj* eval() = 0;
+        virtual Obj* eval(Environment* env) = 0;
 };
 
 class Statement : public Node{
@@ -29,7 +31,7 @@ class Identifier : public Expression {
         Identifier(Token tok, string value);
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval() override;
+        Obj* eval(Environment* env) override;
 };
 
 class IntegerLiteral : public Expression{
@@ -39,7 +41,7 @@ class IntegerLiteral : public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval() override;
+        Obj* eval(Environment* env) override;
 
 };
 
@@ -50,8 +52,18 @@ class BlockStatement: public Statement{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval() override;
+        Obj* eval(Environment* env) override;
+};
 
+class FunctionObj : public Obj{
+    public:
+        vector<Identifier*> parameters;
+        BlockStatement* body;
+        Environment* env;
+
+        FunctionObj (vector<Identifier*>, BlockStatement*, Environment*);
+        ObjType Type() override;
+        string Inspect() override;
 };
 
 class FunctionLiteral : public Expression{
@@ -62,7 +74,7 @@ class FunctionLiteral : public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval() override;
+        Obj* eval(Environment* env) override;
 
 };
 
@@ -74,8 +86,11 @@ class CallExpression: public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval() override;
-
+        Obj* eval(Environment*) override;
+        Obj* applyFunction(Obj*, vector<Obj*>);
+        vector<Obj*> evalExpression(Environment*, vector<Expression*>&);
+        Environment* extendFunctionEnv(FunctionObj*, vector<Obj*>&);
+        Obj* unwrapReturnValue(Obj*);
 };
 
 class PrefixExpression : public Expression{
@@ -86,7 +101,7 @@ class PrefixExpression : public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval() override;
+        Obj* eval(Environment* env) override;
         Obj* evalOperator(string op, Obj* o);
         Obj* evalBang(Obj* right);
         Obj* evalMinus(Obj* right);
@@ -101,7 +116,7 @@ class InfixExpression : public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval() override;
+        Obj* eval(Environment* env) override;
         Obj* evalInfixExpression(Obj* l, Obj* r);
         Obj* evalIntegerInfix(IntegerObj* l, IntegerObj* r);
 };
@@ -117,7 +132,7 @@ class LetStatement : public Statement{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval() override;
+        Obj* eval(Environment* env) override;
 
 };
 
@@ -128,7 +143,7 @@ class ReturnStatement : public Statement{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval() override;
+        Obj* eval(Environment* env) override;
 
 };
 
@@ -139,7 +154,7 @@ class ExpressionStatement : public Statement{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval() override;
+        Obj* eval(Environment* env) override;
 
 };
 
@@ -150,7 +165,7 @@ class Boolean : public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval() override;
+        Obj* eval(Environment* env) override;
 };
 
 //why is if an expression? what does it return?
@@ -163,7 +178,7 @@ class IfExpression: public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval() override;
+        Obj* eval(Environment* env) override;
 };
 
 class Program : public Node{
@@ -172,9 +187,13 @@ class Program : public Node{
 
         string tokenLiteral() override;  
         string toString() override;
-        Obj* eval() override;
+        Obj* eval(Environment* env) override;
 };
 
+
+
 Obj* nativeBoolToBooleanObj(bool value);
+bool isTruthy(Obj* o);
+bool isError(Obj* o);
 
 #endif // AST_H

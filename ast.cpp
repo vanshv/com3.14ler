@@ -3,6 +3,12 @@
 NullObj* const_null = new NullObj();
 BooleanObj* const_true = new BooleanObj(true);
 BooleanObj* const_false = new BooleanObj(false);
+    
+/*
+    i should free things
+    learn how to check memory leaks with valgrind 
+
+*/
 
 string Program::tokenLiteral(){
     if(!statements.empty()){
@@ -19,12 +25,18 @@ string Program::toString(){
     return ret;
 }
 
-Obj* Program::eval(){
+Obj* Program::eval(Environment* env){
     Obj* o = nullptr;
     for(auto i : statements){
-        o = i->eval();
+        o = i->eval(env);
+        if(o->Type() == RETURN_OBJ){
+            ReturnObj* ro = dynamic_cast<ReturnObj*>(o);
+            return ro->val;
+        }
+        if(o->Type() == ERROR_OBJ){
+            return o;
+        }
     }
-
     return o;
 }
 
@@ -43,10 +55,13 @@ string Identifier::toString(){
     return value;
 }
 
-Obj* Identifier::eval(){
-    return nullptr;
+Obj* Identifier::eval(Environment* env){
+    Obj* o = env->get(value);
+    if(o == nullptr){
+        return new ErrorObj("identifier not found " + value);
+    }
+    return o;
 } 
-
 //
 
 string LetStatement::tokenLiteral(){
@@ -64,9 +79,13 @@ string LetStatement::toString(){
     return ret;
 }
 
-Obj* LetStatement::eval(){
-    return nullptr;
-
+Obj* LetStatement::eval(Environment* env){
+    Obj* o = value->eval(env);
+    if(isError(o)){
+        return o;
+    }
+    env->set(name->value, o);
+    return o;
 }
 
 //
@@ -85,9 +104,13 @@ string ReturnStatement::toString(){
     return ret;
 }
 
-Obj* ReturnStatement::eval(){
-    return nullptr;
-
+Obj* ReturnStatement::eval(Environment* env){
+    Obj* o = value->eval(env);
+    if (isError(o)) {
+        return o;
+    }
+    ReturnObj* ro = new ReturnObj(o);
+    return ro;
 }
 
 //
@@ -103,8 +126,12 @@ string ExpressionStatement::toString(){
     return "";
 }
 
-Obj* ExpressionStatement::eval(){
-    return expression->eval();
+Obj* ExpressionStatement::eval(Environment* env){
+    Obj* o = expression->eval(env);
+    if (isError(o)) {
+        return o;
+    }
+    return o;
 }
 
 //
@@ -117,7 +144,7 @@ string IntegerLiteral::toString(){
     return to_string(value);
 }
 
-Obj* IntegerLiteral::eval(){
+Obj* IntegerLiteral::eval(Environment* env){
     IntegerObj* o = new IntegerObj(value);
     return o;
 }
@@ -139,9 +166,9 @@ string FunctionLiteral::toString(){
     return ret;
 }
 
-Obj* FunctionLiteral::eval(){
-    return nullptr;
-
+Obj* FunctionLiteral::eval(Environment* env){
+    FunctionObj* fo = new FunctionObj(parameters, body, env);
+    return fo;
 }
 
 //
@@ -161,8 +188,62 @@ string CallExpression::toString(){
     return ret;
 }
 
-Obj* CallExpression::eval(){
-    return nullptr;
+//bug: function literal not found in env
+Obj* CallExpression::eval(Environment* env){
+    Obj* o = function->eval(env);
+    if(isError(o)){
+        return o;
+    }
+    vector<Obj*> veco = evalExpression(env, args);
+    if(veco.size() == 1 && isError(veco[0])){
+        return veco[0];
+    }
+
+    return applyFunction(o, veco);
+}
+
+Obj* CallExpression::applyFunction(Obj* o, vector<Obj*> vecos){
+    FunctionObj* fo = dynamic_cast<FunctionObj*> (o);
+    if(fo == nullptr){
+        return new ErrorObj("Expected function object, received" + o->Type());
+    }
+
+    Environment* env = extendFunctionEnv(fo, vecos);
+    Obj* evaled = fo->body->eval(env);
+    return unwrapReturnValue(evaled);
+}
+
+vector<Obj*> CallExpression::evalExpression(Environment* env, vector<Expression*>& args){
+    vector<Obj*> res;
+    for(auto a : args){
+        Obj* o = a->eval(env);
+        if(isError(o)){
+            return vector<Obj*> {o};
+        }
+        res.push_back(o);
+    }
+
+    return res;
+}
+
+Environment* CallExpression::extendFunctionEnv(FunctionObj* fo, vector<Obj*>& args){
+    Environment* newenv = new Environment();
+    newenv->enclose(fo->env);
+
+    for(int i = 0; i < args.size(); i++){
+        newenv->set(fo->parameters[i]->value, args[i]);
+    }
+
+    return newenv;
+}
+
+Obj* CallExpression::unwrapReturnValue(Obj* o){
+    ReturnObj* ro = dynamic_cast<ReturnObj*> (o);
+    if(ro == nullptr){
+        return o;
+    }
+
+    return ro->val;
 }
 
 //
@@ -180,8 +261,11 @@ string PrefixExpression::toString(){
 }
 
 // -true should output null, but outputs nothing
-Obj* PrefixExpression::eval(){
-    Obj* o = right->eval();
+Obj* PrefixExpression::eval(Environment* env){
+    Obj* o = right->eval(env);
+    if (isError(o)) {
+        return o;
+    }
     o = evalOperator(op, o);
     return o;
 }
@@ -193,7 +277,7 @@ Obj* PrefixExpression::evalOperator(string op, Obj* right){
         case '-':
             return evalMinus(right);
         default:
-            return const_null;
+            return new ErrorObj("Unknown operator, " + op + right->Inspect());
     }
 }
 
@@ -219,13 +303,12 @@ Obj* PrefixExpression::evalBang(Obj* right){
 }
 
 Obj* PrefixExpression::evalMinus(Obj* right){
-    IntegerObj* r = dynamic_cast<IntegerObj*> (right);
-    //should i free this?
-    //maybe learn how to check memory leaks with valgrind too
-    if(r == nullptr){
-        return const_null;
+    if(right->Type() == BOOLEAN_OBJ){
+        return new ErrorObj("unknown operator: - " + right->Type());
     }
 
+    //maybe just change the value, why create new variable?
+    IntegerObj* r = dynamic_cast<IntegerObj*> (right);
     IntegerObj* newr = new IntegerObj(-(r->val));
     return newr;
 }
@@ -244,16 +327,22 @@ string InfixExpression::toString(){
     return ret;
 }
 
-Obj* InfixExpression::eval(){
-    Obj* r = right->eval();
-    Obj* l = left->eval();
+Obj* InfixExpression::eval(Environment* env){
+    Obj* r = right->eval(env);
+    if (isError(r)) {
+        return r;
+    }
+    Obj* l = left->eval(env);
+    if (isError(l)) {
+        return l;
+    }
     return evalInfixExpression(l, r);
 }
 
 Obj* InfixExpression::evalInfixExpression(Obj* l, Obj* r){
-    IntegerObj* il = dynamic_cast<IntegerObj*> (l);
-    IntegerObj* ir = dynamic_cast<IntegerObj*> (r);
-    if(il != nullptr && ir != nullptr){
+    if(l->Type() == INTEGER_OBJ && r->Type() == INTEGER_OBJ){
+        IntegerObj* il = dynamic_cast<IntegerObj*> (l);
+        IntegerObj* ir = dynamic_cast<IntegerObj*> (r);
         return evalIntegerInfix(il, ir);
     }
     // //their memroy addresses are the same if they are bool
@@ -263,8 +352,11 @@ Obj* InfixExpression::evalInfixExpression(Obj* l, Obj* r){
     if(op == "!="){
         return nativeBoolToBooleanObj(r != l);
     }
+    if(l->Type() != r->Type()){
+        return new ErrorObj("Mismatched Types - " + l->Inspect() + op + r->Inspect());
+    }
 
-    return const_null;
+    return new ErrorObj("Unknown Operator - " + l->Inspect() + op + r->Inspect());
 }
 
 Obj* InfixExpression::evalIntegerInfix(IntegerObj* il, IntegerObj* ir){
@@ -293,7 +385,7 @@ Obj* InfixExpression::evalIntegerInfix(IntegerObj* il, IntegerObj* ir){
                 return nativeBoolToBooleanObj(il->val == ir->val);
             }
             else{
-                return const_null;
+                return new ErrorObj("Unknown Opeator - " + il->Inspect() + op + ir->Inspect());        
             }
         }
         case '!':{
@@ -301,12 +393,12 @@ Obj* InfixExpression::evalIntegerInfix(IntegerObj* il, IntegerObj* ir){
                 return nativeBoolToBooleanObj(il->val != ir->val);
             }
             else{
-                return const_null;
+                return new ErrorObj("Unknown Opeator - " + il->Inspect() + op + ir->Inspect());        
             }
         }
 
         default:
-            return const_null;        
+            return new ErrorObj("Unknown Opeator - " + il->Inspect() + op + ir->Inspect());        
     }
     return o;
 }
@@ -321,7 +413,7 @@ string Boolean::toString(){
     return tok.val;
 }
 
-Obj* Boolean::eval(){
+Obj* Boolean::eval(Environment* env){
     return nativeBoolToBooleanObj(value);
 }
 
@@ -352,9 +444,18 @@ string IfExpression::toString(){
     return ret;
 }
 
-Obj* IfExpression::eval(){
-    return nullptr;
-
+Obj* IfExpression::eval(Environment* env){
+    Obj* o = condition->eval(env);
+    if (isError(o)) {
+        return o;
+    }
+    if(isTruthy(o)){
+        return conseq->eval(env);
+    }
+    else if(alt != nullptr){
+        return alt->eval(env);
+    }
+    return const_null;
 }
 
 //
@@ -372,8 +473,63 @@ string BlockStatement::toString(){
     return ret;
 }
 
-Obj* BlockStatement::eval(){
-    return nullptr;
+Obj* BlockStatement::eval(Environment* env){
+    Obj* o = nullptr;
+    for(auto i : stmts){
+        o = i->eval(env);
+        if(o->Type() == RETURN_OBJ || o->Type() == ERROR_OBJ){
+            return o;
+        }
+    }
+    return o;
+}
+
+//
+bool isTruthy(Obj* o){
+    if(o->Type() == INTEGER_OBJ){
+        IntegerObj* io = dynamic_cast<IntegerObj*> (o);
+        if(io != nullptr && io->val != 0){
+            return true;
+        }
+    }
+    else if(o->Type() == BOOLEAN_OBJ){
+        BooleanObj* bo = dynamic_cast<BooleanObj*>(o);
+        if(bo != nullptr && bo->val == true){
+            return true;
+        }
+    }
+    return false;
+}
+
+bool isError(Obj* o){
+    if(o != nullptr){
+        return (o->Type() == ERROR_OBJ);
+    }
+    return false;
+}
+
+//
+
+FunctionObj::FunctionObj(vector<Identifier*> params, BlockStatement* body, Environment* env){
+    this->parameters = params;
+    this->body = body;
+    this->env = env;
+}
+
+ObjType FunctionObj::Type(){
+    return FUNTION_OBJ;
+}
+
+string FunctionObj::Inspect(){
+    string res = "fn";
+    res += " (";
+    for(auto i : parameters){
+        res += i->toString() + ", ";
+    }
+    res += ") ";
+    res += body->toString();
+
+    return res;
 }
 
 //

@@ -1,14 +1,7 @@
 /*
-expression return values and statements don't
-for our context it is true, might not generlize
+    expression return values and statements don't
+    for our context it is true, might not generlize
 
-
-skipped
-lmao function pointers wtf
-pratt parser working
-cleaning up test suite
-adding booleans to tests
-grouped expressions and below
 */
 
 #include "parser.hpp"
@@ -262,7 +255,7 @@ Expression* Parser::parseIfExpression(){
 
     if(peekToken.type == ELSE){
         eatToken();
-        if(expectPeek(RPAREN)){
+        if(!expectPeek(LBRACE)){
             return nullptr;
         }
         ie->alt = parseBlockStatement();
@@ -276,13 +269,12 @@ BlockStatement* Parser::parseBlockStatement(){
     bs->tok = currToken;
 
     eatToken();
-
-    while(peekToken.type != RBRACE && peekToken.type != MYEOF){
+    while(currToken.type != RBRACE && currToken.type != MYEOF){
         Statement* st = parseStatement();
         if(st != nullptr){
             bs->stmts.push_back(st);
         }
-        eatToken(); //semicolon 
+        eatToken();
     }
 
     return bs;
@@ -309,14 +301,16 @@ Expression* Parser::parseFunctionLiteral(){
 
 vector<Identifier*> Parser::parseParameters(){
     vector<Identifier*> params;
-    if(expectPeek(RBRACE)){
+
+    if(peekTokenis(RPAREN)){
+        eatToken();
         return params;
     }
     eatToken();
 
     Identifier* id = new Identifier(currToken, currToken.val);
     params.push_back(id);
-    while(peekToken.type != RBRACE){
+    while(peekToken.type == COMMA){
         eatToken();
         eatToken();
         Identifier* id = new Identifier(currToken, currToken.val);
@@ -342,15 +336,15 @@ Expression* Parser::parseCallExpression(Expression* left){
 vector<Expression*> Parser::parseCallArguements(){
     vector<Expression*> args;
 
-    if(expectPeek(RBRACE)){
+    if(peekTokenis(RPAREN)){
+        eatToken();
         return args;
     }
 
     eatToken();
     Expression* exp = parseExpression(LOWEST);
     args.push_back(exp);
-
-    if(peekToken.type == COMMA){
+    while(peekToken.type == COMMA){
         eatToken();
         eatToken();
         Expression* exp = parseExpression(LOWEST);
