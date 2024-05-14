@@ -75,7 +75,16 @@ class FunctionLiteral : public Expression{
         string tokenLiteral() override;
         string toString() override;
         Obj* eval(Environment* env) override;
+};
 
+class StringLiteral : public Expression{
+    public:
+        Token tok;
+        string value;
+
+        string tokenLiteral() override;
+        string toString() override;
+        Obj* eval(Environment* env) override;
 };
 
 class CallExpression: public Expression{
@@ -119,6 +128,7 @@ class InfixExpression : public Expression{
         Obj* eval(Environment* env) override;
         Obj* evalInfixExpression(Obj* l, Obj* r);
         Obj* evalIntegerInfix(IntegerObj* l, IntegerObj* r);
+        Obj* evalStringInfix(StringObj* l, StringObj* r);
 };
 
 

@@ -52,6 +52,7 @@ class Parser{
         Expression* parseGroupedExpression();
         Expression* parseIfExpression();
         Expression* parseFunctionLiteral();
+        Expression* parseStringLiteral();
         vector<Identifier*> parseParameters(); 
         Expression* parseCallExpression(Expression* );
         vector<Expression*> parseCallArguements();

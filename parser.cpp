@@ -22,6 +22,7 @@ Parser::Parser(Lexer* l){
     registerPrefix(LPAREN, &Parser::parseGroupedExpression);
     registerPrefix(IF, &Parser::parseIfExpression);
     registerPrefix(FUNCTION, &Parser::parseFunctionLiteral);
+    registerPrefix(STRING, &Parser::parseStringLiteral);
 
     registerInfix(PLUS, &Parser::parseInfixExpression);
     registerInfix(MINUS, &Parser::parseInfixExpression);
@@ -297,6 +298,14 @@ Expression* Parser::parseFunctionLiteral(){
     fl->body = parseBlockStatement();
 
     return fl;
+}
+
+Expression* Parser::parseStringLiteral(){
+    StringLiteral* sl = new StringLiteral();
+    sl->tok = currToken;
+    sl->value = currToken.val;
+
+    return sl;
 }
 
 vector<Identifier*> Parser::parseParameters(){

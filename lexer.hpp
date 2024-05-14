@@ -32,6 +32,7 @@ enum TokenType {
     NOT_EQ,
     TRUE,
     FALSE,
+    STRING,
 };
 
 class Token{
@@ -45,8 +46,8 @@ class Token{
 class Lexer{
     public: 
         string input;
-        char ch; //points to pos
-        int pos; //points to ch
+        char ch; // points to pos
+        int pos; // points to ch
         int nextpos; // next pos after pos
 
         map<string, TokenType> keywords;
@@ -60,6 +61,7 @@ class Lexer{
         bool isDigit();
         string readNumber();
         string readIdentifier();
+        string readString();
 };
 
 #endif // LEXER_H

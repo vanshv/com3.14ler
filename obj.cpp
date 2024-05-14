@@ -76,15 +76,34 @@ string ErrorObj::Inspect(){
 
 //
 
+StringObj::StringObj(string str){
+    this->val = str;
+}
+
+ObjType StringObj::Type(){
+    return STRING_OBJ;
+}
+
+string StringObj::Inspect(){
+    return val;
+}
+
+//
+
 Environment::Environment(){
     this->outer = nullptr;
 }
 
-//create a new env inside our env
-Environment* Environment::enclose(Environment* outer){
-    Environment* env = new Environment();
-    env->outer = outer;
-    return env;
+/////////////////
+//    //////// //
+// e1 // e2 // //
+//    //////// //
+/////////////////
+// creates a new env inside that env and returns that
+Environment* enclose(Environment* e1){
+    Environment* e2 = new Environment();
+    e2->outer = e1;
+    return e2;
 }
 
 Obj* Environment::get(string ident){

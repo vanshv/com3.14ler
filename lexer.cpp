@@ -149,6 +149,9 @@ Token Lexer::spitToken(){
         case ')':
             t = Token(RPAREN, ")");
             break;
+        case '"':
+            t = Token(STRING, readString());
+            break;
         case 0:
             t = Token(MYEOF, "");
             break;
@@ -175,4 +178,16 @@ Token Lexer::spitToken(){
 
     readChar();
     return t;
+}
+
+string Lexer::readString(){
+    int begin = pos + 1;
+    while(true){
+        readChar();
+        if(ch == '"' || ch == 0){
+            break;
+        }
+    }
+
+    return input.substr(begin, pos - begin);
 }

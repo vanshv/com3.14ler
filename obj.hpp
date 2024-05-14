@@ -11,6 +11,7 @@ enum ObjType {
     RETURN_OBJ,
     ERROR_OBJ,
     FUNTION_OBJ,
+    STRING_OBJ,
 };
 
 //if we define at least one virtual function in our base classes, it
@@ -67,6 +68,15 @@ class ErrorObj : public Obj{
         string Inspect() override;
 };
 
+class StringObj : public Obj{
+    public:
+        string val;
+
+        StringObj(string str);
+        ObjType Type() override;
+        string Inspect() override;
+};
+
 class Environment{
     public:
         unordered_map<string, Obj*> envmap;
@@ -75,7 +85,8 @@ class Environment{
         Environment();
         Obj* get(string);
         void set(string, Obj*);
-        Environment* enclose(Environment*);
 };
+
+Environment* enclose(Environment*);
 
 #endif // OBJ_H

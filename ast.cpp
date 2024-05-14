@@ -173,6 +173,21 @@ Obj* FunctionLiteral::eval(Environment* env){
 
 //
 
+string StringLiteral::tokenLiteral(){
+    return tok.val;
+}
+
+string StringLiteral::toString(){
+    return tok.val;
+}
+
+Obj* StringLiteral::eval(Environment* env){
+    StringObj* so = new StringObj(value);
+    return so;
+}
+
+//
+
 string CallExpression::tokenLiteral(){
     return tok.val;
 }
@@ -227,8 +242,8 @@ vector<Obj*> CallExpression::evalExpression(Environment* env, vector<Expression*
 }
 
 Environment* CallExpression::extendFunctionEnv(FunctionObj* fo, vector<Obj*>& args){
-    Environment* newenv = new Environment();
-    newenv->enclose(fo->env);
+    Environment* newenv = enclose(fo->env);
+    //here
 
     for(int i = 0; i < args.size(); i++){
         newenv->set(fo->parameters[i]->value, args[i]);
@@ -345,6 +360,11 @@ Obj* InfixExpression::evalInfixExpression(Obj* l, Obj* r){
         IntegerObj* ir = dynamic_cast<IntegerObj*> (r);
         return evalIntegerInfix(il, ir);
     }
+    else if(l->Type() == STRING_OBJ && r->Type() == STRING_OBJ){
+        StringObj* sl = dynamic_cast<StringObj*> (l);
+        StringObj* sr = dynamic_cast<StringObj*> (r);
+        return evalStringInfix(sl, sr);
+    }
     // //their memroy addresses are the same if they are bool
     if(op == "=="){
         return nativeBoolToBooleanObj(r == l);
@@ -401,6 +421,17 @@ Obj* InfixExpression::evalIntegerInfix(IntegerObj* il, IntegerObj* ir){
             return new ErrorObj("Unknown Opeator - " + il->Inspect() + op + ir->Inspect());        
     }
     return o;
+}
+
+Obj* InfixExpression::evalStringInfix(StringObj* sl, StringObj* sr){
+    if(op[0] != '+'){
+        return new ErrorObj("String operand other than +, used" + op[0]);
+    }
+    
+    string left = sl->val;
+    string right = sr->val;
+    StringObj* so = new StringObj(left + right);
+    return so;
 }
 
 //
