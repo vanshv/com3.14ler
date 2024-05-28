@@ -12,6 +12,7 @@ enum ObjType {
     ERROR_OBJ,
     FUNTION_OBJ,
     STRING_OBJ,
+    BUILTIN_OBJ,
 };
 
 //if we define at least one virtual function in our base classes, it
@@ -19,6 +20,8 @@ enum ObjType {
 
 // what if we dynamic_cast from derived1 to base.
 // is it possible to cast to derived2? i think not, because of virtual tables 
+
+// implement a simple type specifier instead of using dynamic_case everywhere lol
 class Obj {
     public:
         virtual ObjType Type() = 0;
@@ -73,6 +76,20 @@ class StringObj : public Obj{
         string val;
 
         StringObj(string str);
+        ObjType Type() override;
+        string Inspect() override;
+};
+
+class BuiltinFunc {
+    public:
+    virtual Obj* call(vector<Obj*>& args) = 0;
+};
+
+class BuiltinObj : public Obj{
+    public:
+        BuiltinFunc* functor;
+        
+        BuiltinObj(BuiltinFunc* f);
         ObjType Type() override;
         string Inspect() override;
 };

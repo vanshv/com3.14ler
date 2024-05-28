@@ -4,6 +4,8 @@ NullObj* const_null = new NullObj();
 BooleanObj* const_true = new BooleanObj(true);
 BooleanObj* const_false = new BooleanObj(false);
     
+extern map<string, BuiltinObj *> builtins_map;
+
 /*
     i should free things
     learn how to check memory leaks with valgrind 
@@ -58,10 +60,14 @@ string Identifier::toString(){
 Obj* Identifier::eval(Environment* env){
     Obj* o = env->get(value);
     if(o == nullptr){
-        return new ErrorObj("identifier not found " + value);
+        if(builtins_map.find(value) == builtins_map.end()){
+            return new ErrorObj("identifier not found " + value);
+        }
+        BuiltinObj* bo = builtins_map[value];
+        return bo;
     }
     return o;
-} 
+}
 //
 
 string LetStatement::tokenLiteral(){
@@ -203,9 +209,9 @@ string CallExpression::toString(){
     return ret;
 }
 
-//bug: function literal not found in env
 Obj* CallExpression::eval(Environment* env){
     Obj* o = function->eval(env);
+    BuiltinObj* bo = dynamic_cast<BuiltinObj*> (o);
     if(isError(o)){
         return o;
     }
@@ -220,7 +226,13 @@ Obj* CallExpression::eval(Environment* env){
 Obj* CallExpression::applyFunction(Obj* o, vector<Obj*> vecos){
     FunctionObj* fo = dynamic_cast<FunctionObj*> (o);
     if(fo == nullptr){
-        return new ErrorObj("Expected function object, received" + o->Type());
+        BuiltinObj* bo = dynamic_cast<BuiltinObj*> (o);
+        if(bo == nullptr){
+            return new ErrorObj("Expected builtin/function object, received ?");
+        }
+        else{
+            return bo->functor->call(vecos);
+        }
     }
 
     Environment* env = extendFunctionEnv(fo, vecos);
@@ -243,7 +255,6 @@ vector<Obj*> CallExpression::evalExpression(Environment* env, vector<Expression*
 
 Environment* CallExpression::extendFunctionEnv(FunctionObj* fo, vector<Obj*>& args){
     Environment* newenv = enclose(fo->env);
-    //here
 
     for(int i = 0; i < args.size(); i++){
         newenv->set(fo->parameters[i]->value, args[i]);
@@ -275,7 +286,6 @@ string PrefixExpression::toString(){
     return ret;
 }
 
-// -true should output null, but outputs nothing
 Obj* PrefixExpression::eval(Environment* env){
     Obj* o = right->eval(env);
     if (isError(o)) {

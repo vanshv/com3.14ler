@@ -90,6 +90,20 @@ string StringObj::Inspect(){
 
 //
 
+BuiltinObj::BuiltinObj(BuiltinFunc* f){
+    this->functor = f;
+}
+
+ObjType BuiltinObj::Type(){
+    return BUILTIN_OBJ;
+}
+
+string BuiltinObj::Inspect(){
+    return "Builtin_Function";
+}
+
+//
+
 Environment::Environment(){
     this->outer = nullptr;
 }

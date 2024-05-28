@@ -33,6 +33,8 @@ enum TokenType {
     TRUE,
     FALSE,
     STRING,
+    LBRACKET,
+    RBRACKET,
 };
 
 class Token{

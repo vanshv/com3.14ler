@@ -149,6 +149,12 @@ Token Lexer::spitToken(){
         case ')':
             t = Token(RPAREN, ")");
             break;
+        case '[':
+            t = Token(LBRACKET, "[");
+            break;
+        case ']':
+            t = Token(RBRACKET, "]");
+            break;
         case '"':
             t = Token(STRING, readString());
             break;

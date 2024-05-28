@@ -12,6 +12,7 @@ int main() {
     cout << PROMPT;
 
     Environment* env = new Environment();
+    set_builtins();
     while (getline(cin, line)) {
         Lexer* l = new Lexer(line);
         Parser* p = new Parser(l);

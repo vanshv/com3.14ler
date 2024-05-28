@@ -4,10 +4,9 @@
 #include <bits/stdc++.h>
 #include "lexer.hpp"
 #include "obj.hpp"
+#include "builtins.hpp"
 
 using namespace std;
-
-
 
 class Node{
     public:
@@ -199,8 +198,6 @@ class Program : public Node{
         string toString() override;
         Obj* eval(Environment* env) override;
 };
-
-
 
 Obj* nativeBoolToBooleanObj(bool value);
 bool isTruthy(Obj* o);
