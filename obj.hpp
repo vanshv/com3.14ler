@@ -94,6 +94,16 @@ class BuiltinObj : public Obj{
         string Inspect() override;
 };
 
+// the biggest lie ever told?
+class ArrayObj : public Obj{
+    public:
+        vector<Obj*> arr;
+
+        ArrayObj();
+        ObjType Type() override;
+        string Inspect() override;
+};
+
 class Environment{
     public:
         unordered_map<string, Obj*> envmap;

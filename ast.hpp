@@ -96,7 +96,6 @@ class CallExpression: public Expression{
         string toString() override;
         Obj* eval(Environment*) override;
         Obj* applyFunction(Obj*, vector<Obj*>);
-        vector<Obj*> evalExpression(Environment*, vector<Expression*>&);
         Environment* extendFunctionEnv(FunctionObj*, vector<Obj*>&);
         Obj* unwrapReturnValue(Obj*);
 };
@@ -153,7 +152,37 @@ class ReturnStatement : public Statement{
         string tokenLiteral() override;
         string toString() override;
         Obj* eval(Environment* env) override;
+};
 
+class ArrayLiteral : public Expression{
+    public:
+        Token tok;
+        vector<Expression*> elements;
+
+        string tokenLiteral() override;
+        string toString() override;
+        Obj* eval(Environment* env) override;
+};
+
+class IndexExpression : public Expression{
+    public: 
+        Token tok;
+        Expression* index;
+        Expression* left;
+
+        string tokenLiteral() override;
+        string toString() override;
+        Obj* eval(Environment* env) override;
+};
+
+class HashLiteral : public Expression{
+    public:
+        Token tok;
+        map<Expression*, Expression*> kvmap;
+
+        string tokenLiteral() override;
+        string toString() override;
+        Obj* eval(Environment* env) override;
 };
 
 class ExpressionStatement : public Statement{
@@ -164,7 +193,6 @@ class ExpressionStatement : public Statement{
         string tokenLiteral() override;
         string toString() override;
         Obj* eval(Environment* env) override;
-
 };
 
 class Boolean : public Expression{
@@ -199,6 +227,9 @@ class Program : public Node{
         Obj* eval(Environment* env) override;
 };
 
+vector<Obj*> evalExpression(Environment*, vector<Expression*>&);
+Obj* evalArrayIndexExpression(ArrayObj* left, IntegerObj* index);
+Obj* evalIndexExpression(Obj* l, Obj* i);
 Obj* nativeBoolToBooleanObj(bool value);
 bool isTruthy(Obj* o);
 bool isError(Obj* o);

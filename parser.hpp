@@ -12,6 +12,8 @@ enum Prenum {
     PRODUCT = 4,
     PREFIX = 5,
     CALL = 6,
+    //might need to check this
+    INDEX = 7,
 };
 //higher precedence is evaluated first
 
@@ -20,8 +22,8 @@ class Parser{
         Lexer* l;
         Token currToken;
         Token peekToken;
-        vector<pair<TokenType, TokenType>> errors;
         // expected, actual token type
+        vector<pair<TokenType, TokenType>> errors;
 
         // could turn these maps to loopup tables
         map<TokenType, Expression* (Parser::*) ()> prefixParseFns;
@@ -55,7 +57,10 @@ class Parser{
         Expression* parseStringLiteral();
         vector<Identifier*> parseParameters(); 
         Expression* parseCallExpression(Expression* );
-        vector<Expression*> parseCallArguements();
+        Expression* parseArrayLiteral();
+        vector<Expression*> parseExpressionList(TokenType end);
+        Expression* parseIndexExpression(Expression* );
+        Expression* parseHashLiteral();
 
         void checkParserErrors();
         void peekError(TokenType ttype);

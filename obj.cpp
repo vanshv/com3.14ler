@@ -104,6 +104,26 @@ string BuiltinObj::Inspect(){
 
 //
 
+ArrayObj::ArrayObj(){
+}
+
+ObjType ArrayObj::Type(){
+    return BUILTIN_OBJ;
+}
+
+string ArrayObj::Inspect(){
+    string res = "[";
+    for(auto a : arr){
+        res += a->Inspect();
+        res += ", ";
+    }
+    res += "]";
+
+    return res;
+}
+
+//
+
 Environment::Environment(){
     this->outer = nullptr;
 }

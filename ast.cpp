@@ -179,6 +179,107 @@ Obj* FunctionLiteral::eval(Environment* env){
 
 //
 
+string ArrayLiteral::tokenLiteral(){
+    return tok.val;
+}
+
+string ArrayLiteral::toString(){
+    string res = "[";
+    for(auto el : elements){
+        res += el->toString();
+        res += ", ";
+    }
+    res += "]";
+    return res;
+}
+
+Obj* ArrayLiteral::eval(Environment* env){
+    vector<Obj*> eles = evalExpression(env, elements);
+
+    if(eles.size() == 1 && isError(eles[0])){
+        return eles[0];
+    }
+
+    ArrayObj* ao = new ArrayObj();
+    ao->arr = eles;
+
+    return ao;
+}
+
+//
+
+string IndexExpression::tokenLiteral(){
+    return tok.val;
+}
+
+string IndexExpression::toString(){
+    string res = "";
+    res += left->toString();
+    res += "[";
+    res += index->toString();
+    res += "]";
+
+    return res;
+}
+
+Obj* IndexExpression::eval(Environment* env){
+    Obj* l = left->eval(env);
+    if(isError(l)){
+        return l;
+    }
+
+    Obj* i = index->eval(env);
+    if(isError(i)){
+        return i;
+    }
+    return evalIndexExpression(l, i);
+}
+
+Obj* evalIndexExpression(Obj* l, Obj* i){
+    ArrayObj* ao = dynamic_cast<ArrayObj*> (l);
+    IntegerObj* io = dynamic_cast<IntegerObj*> (i);
+
+    if(l == nullptr || i == nullptr){
+        return new ErrorObj("thought it was an index expression, but failed");
+    }
+
+    return evalArrayIndexExpression(ao, io);
+}
+
+// i am casting to object and reverting it back to arrayobj or some other object, is there some point to this?
+Obj* evalArrayIndexExpression(ArrayObj* left, IntegerObj* index){
+    int ind = index->val;
+    vector<Obj*> arrr = left->arr;
+    int len = arrr.size();
+
+    if(ind < 0 || ind >= len){
+        return new NullObj();
+    }
+
+    return arrr[ind];
+}
+
+//
+
+string HashLiteral::tokenLiteral(){
+    return tok.val;
+}
+
+string HashLiteral::toString(){
+    string ret = "{";
+    for(auto [k, v] : kvmap){
+        ret += k->toString();
+        ret += " : ";
+        ret += v->toString();
+        ret += ", ";
+    }
+
+    ret += "}";
+    return ret;
+}
+
+//
+
 string StringLiteral::tokenLiteral(){
     return tok.val;
 }
@@ -240,7 +341,7 @@ Obj* CallExpression::applyFunction(Obj* o, vector<Obj*> vecos){
     return unwrapReturnValue(evaled);
 }
 
-vector<Obj*> CallExpression::evalExpression(Environment* env, vector<Expression*>& args){
+vector<Obj*> evalExpression(Environment* env, vector<Expression*>& args){
     vector<Obj*> res;
     for(auto a : args){
         Obj* o = a->eval(env);

@@ -158,6 +158,9 @@ Token Lexer::spitToken(){
         case '"':
             t = Token(STRING, readString());
             break;
+        case ':':
+            t = Token(COLON, ":");
+            break;
         case 0:
             t = Token(MYEOF, "");
             break;

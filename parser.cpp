@@ -23,6 +23,8 @@ Parser::Parser(Lexer* l){
     registerPrefix(IF, &Parser::parseIfExpression);
     registerPrefix(FUNCTION, &Parser::parseFunctionLiteral);
     registerPrefix(STRING, &Parser::parseStringLiteral);
+    registerPrefix(LBRACKET, &Parser::parseArrayLiteral);
+    registerPrefix(LBRACE, &Parser::parseHashLiteral);
 
     registerInfix(PLUS, &Parser::parseInfixExpression);
     registerInfix(MINUS, &Parser::parseInfixExpression);
@@ -33,6 +35,7 @@ Parser::Parser(Lexer* l){
     registerInfix(LT, &Parser::parseInfixExpression);
     registerInfix(GT, &Parser::parseInfixExpression);
     registerInfix(LPAREN, &Parser::parseCallExpression);
+    registerInfix(LBRACKET, &Parser::parseIndexExpression);
 }
 
 Prenum Parser::precedences(TokenType t){
@@ -47,6 +50,7 @@ Prenum Parser::precedences(TokenType t){
         case SLASH:     return PRODUCT;
         case ASTERISK:  return PRODUCT;
         case LPAREN:    return CALL;
+        case LBRACKET:  return INDEX;
     }
     return LOWEST;
 }
@@ -308,6 +312,57 @@ Expression* Parser::parseStringLiteral(){
     return sl;
 }
 
+Expression* Parser::parseArrayLiteral(){
+    ArrayLiteral* al = new ArrayLiteral();
+    al->tok = currToken;
+    al->elements = parseExpressionList(RBRACKET);
+
+    return al;
+}
+
+Expression* Parser::parseIndexExpression(Expression* l){
+    IndexExpression* ie = new IndexExpression();
+    ie->tok = currToken;
+    ie->left = l;
+    eatToken();
+
+    ie->index = parseExpression(LOWEST);
+    
+    if(!expectPeek(RBRACKET)){
+        return nullptr;
+    }
+
+    return ie;
+}
+
+Expression* Parser::parseHashLiteral(){
+    HashLiteral* hl = new HashLiteral();
+    hl->tok = currToken;
+    hl->kvmap = map<Expression*, Expression*> ();
+
+    while(!(peekTokenis(LBRACE))){
+        eatToken();
+        Expression* key = parseExpression(LOWEST);
+
+        if(!(expectPeek(COLON))){
+            return nullptr;
+        }
+
+        eatToken();
+        Expression* value = parseExpression(LOWEST);
+        hl->kvmap[key] = value;
+
+        if (!peekTokenis(RBRACE) && !expectPeek(COMMA)) {
+            return nullptr;
+        }
+    }
+
+    if (expectPeek(RBRACE)) {
+        return nullptr;
+    }
+    return hl;
+}
+
 vector<Identifier*> Parser::parseParameters(){
     vector<Identifier*> params;
 
@@ -337,34 +392,34 @@ Expression* Parser::parseCallExpression(Expression* left){
     CallExpression* ce = new CallExpression();
     ce->tok = currToken;
     ce->function = left;
-    ce->args = parseCallArguements();
+    ce->args = parseExpressionList(RPAREN);
 
     return ce;
 }
 
-vector<Expression*> Parser::parseCallArguements(){
-    vector<Expression*> args;
+vector<Expression*> Parser::parseExpressionList(TokenType end){
+    vector<Expression*> list;
 
-    if(peekTokenis(RPAREN)){
+    if(peekTokenis(end)){
         eatToken();
-        return args;
+        return list;
     }
 
     eatToken();
     Expression* exp = parseExpression(LOWEST);
-    args.push_back(exp);
+    list.push_back(exp);
     while(peekToken.type == COMMA){
         eatToken();
         eatToken();
         Expression* exp = parseExpression(LOWEST);
-        args.push_back(exp);
+        list.push_back(exp);
     }
 
-    if(!expectPeek(RPAREN)){
-        args.clear();
+    if(!expectPeek(end)){
+        list.clear();
     }
 
-    return args;
+    return list;
 }
 
 void Parser::peekError(TokenType ttype){
