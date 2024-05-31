@@ -229,6 +229,7 @@ class Program : public Node{
 
 vector<Obj*> evalExpression(Environment*, vector<Expression*>&);
 Obj* evalArrayIndexExpression(ArrayObj* left, IntegerObj* index);
+Obj* evalHashIndexExpression(HashObj* left, Obj* index);
 Obj* evalIndexExpression(Obj* l, Obj* i);
 Obj* nativeBoolToBooleanObj(bool value);
 bool isTruthy(Obj* o);

@@ -13,6 +13,7 @@ enum ObjType {
     FUNTION_OBJ,
     STRING_OBJ,
     BUILTIN_OBJ,
+    HASH_OBJ,
 };
 
 //if we define at least one virtual function in our base classes, it
@@ -102,6 +103,37 @@ class ArrayObj : public Obj{
         ArrayObj();
         ObjType Type() override;
         string Inspect() override;
+};
+
+// class HashKey{
+//     public:
+//     ObjType type;
+//     long long val;
+
+//     HashKey(bool b);
+//     HashKey(int i);
+//     HashKey(string s);
+// };
+
+long long getHashKey(string s);
+
+class HashPair{
+    public:
+    Obj* key;
+    Obj* val;
+
+    HashPair(Obj* k, Obj* v);
+};
+
+// how is this more convenient if we were to implement something like range function
+// or firstpair function?
+class HashObj : public Obj{
+    public:
+    map<long long, HashPair*> pairs;
+
+    HashObj();
+    ObjType Type() override;
+    string Inspect() override;
 };
 
 class Environment{

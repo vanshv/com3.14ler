@@ -124,6 +124,48 @@ string ArrayObj::Inspect(){
 
 //
 
+// HashKey::HashKey(bool b){
+//     val = b;
+// }
+// HashKey::HashKey(int i){
+//     val = i;
+// }
+// HashKey::HashKey(string s){
+//     val = hash<string>{} (s);
+// }
+
+long long getHashKey(string s){
+    return hash<string>{} (s);
+}
+
+HashPair::HashPair(Obj* k, Obj* v){
+    this->key = k;
+    this->val = v;
+}
+
+HashObj::HashObj(){
+
+}
+
+ObjType HashObj::Type(){
+    return HASH_OBJ;
+}
+
+string HashObj::Inspect(){
+    string res = "{";
+    for(auto kv : pairs){
+        res += kv.second->key->Inspect();
+        res += ":"; 
+        res += kv.second->val->Inspect();
+        res += ", ";
+    }
+
+    res += "}";
+    return res;
+}
+
+//
+
 Environment::Environment(){
     this->outer = nullptr;
 }

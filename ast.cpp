@@ -238,12 +238,38 @@ Obj* IndexExpression::eval(Environment* env){
 Obj* evalIndexExpression(Obj* l, Obj* i){
     ArrayObj* ao = dynamic_cast<ArrayObj*> (l);
     IntegerObj* io = dynamic_cast<IntegerObj*> (i);
-
-    if(l == nullptr || i == nullptr){
-        return new ErrorObj("thought it was an index expression, but failed");
+    if(ao != nullptr && io != nullptr){
+        return evalArrayIndexExpression(ao, io);
     }
 
-    return evalArrayIndexExpression(ao, io);
+    HashObj* ho = dynamic_cast<HashObj*> (l);
+    if(ho != nullptr){
+        return evalHashIndexExpression(ho, i);
+    }
+
+    return new ErrorObj("thought it was an index expression, but failed");
+}
+
+Obj* evalHashIndexExpression(HashObj* ho, Obj* key){
+    long long h;
+    if(IntegerObj* io = dynamic_cast<IntegerObj*>(key)){
+        h = io->val;
+    }
+    else if(StringObj* so = dynamic_cast<StringObj*>(key)){
+        h = getHashKey(so->val);
+    }
+    else if(BooleanObj* bo = dynamic_cast<BooleanObj*>(key)){
+        h = bo->val;
+    }
+    else{
+        return new ErrorObj("did not find appropriate type");
+    }
+
+    cout<<"hi?";
+    if(ho->pairs.find(h) == ho->pairs.end()){
+        return new NullObj();
+    }
+    return (ho->pairs[h])->val;
 }
 
 // i am casting to object and reverting it back to arrayobj or some other object, is there some point to this?
@@ -276,6 +302,44 @@ string HashLiteral::toString(){
 
     ret += "}";
     return ret;
+}
+
+Obj* HashLiteral::eval(Environment* env){
+    map<long long, HashPair*> pairsmap;
+
+    for(auto kv : kvmap){
+        Obj* key = kv.first->eval(env);
+        if(isError(key)){
+            return key;
+        }
+
+        //key should be integer, string or boolean
+        long long h;
+        if(IntegerObj* io = dynamic_cast<IntegerObj*>(key)){
+            h = io->val;
+        }
+        else if(StringObj* so = dynamic_cast<StringObj*>(key)){
+            h = getHashKey(so->val);
+        }
+        else if(BooleanObj* bo = dynamic_cast<BooleanObj*>(key)){
+            h = bo->val;
+        }
+        else{
+            return new ErrorObj("did not find appropriate type");
+        }
+
+        Obj* val = kv.second->eval(env);
+        if(isError(val)){
+            return val;
+        }
+
+        HashPair* hp = new HashPair(key, val);
+        pairsmap[h] = hp;
+    }
+
+    HashObj* ho = new HashObj();
+    ho->pairs = pairsmap;
+    return ho;
 }
 
 //

@@ -340,11 +340,11 @@ Expression* Parser::parseHashLiteral(){
     hl->tok = currToken;
     hl->kvmap = map<Expression*, Expression*> ();
 
-    while(!(peekTokenis(LBRACE))){
+    while(!peekTokenis(RBRACE)){
         eatToken();
         Expression* key = parseExpression(LOWEST);
 
-        if(!(expectPeek(COLON))){
+        if(!expectPeek(COLON)){
             return nullptr;
         }
 
@@ -357,7 +357,7 @@ Expression* Parser::parseHashLiteral(){
         }
     }
 
-    if (expectPeek(RBRACE)) {
+    if (!expectPeek(RBRACE)) {
         return nullptr;
     }
     return hl;
