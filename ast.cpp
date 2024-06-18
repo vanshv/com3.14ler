@@ -1,8 +1,4 @@
 #include "ast.hpp"
-
-NullObj* const_null = new NullObj();
-BooleanObj* const_true = new BooleanObj(true);
-BooleanObj* const_false = new BooleanObj(false);
     
 extern map<string, BuiltinObj *> builtins_map;
 
@@ -11,6 +7,12 @@ extern map<string, BuiltinObj *> builtins_map;
     learn how to check memory leaks with valgrind 
 
 */
+
+// multiple definitions
+NullObj* const_null = new NullObj();
+BooleanObj* const_true = new BooleanObj(true);
+BooleanObj* const_false = new BooleanObj(false);
+
 
 string Program::tokenLiteral(){
     if(!statements.empty()){
@@ -27,19 +29,8 @@ string Program::toString(){
     return ret;
 }
 
-Obj* Program::eval(Environment* env){
-    Obj* o = nullptr;
-    for(auto i : statements){
-        o = i->eval(env);
-        if(o->Type() == RETURN_OBJ){
-            ReturnObj* ro = dynamic_cast<ReturnObj*>(o);
-            return ro->val;
-        }
-        if(o->Type() == ERROR_OBJ){
-            return o;
-        }
-    }
-    return o;
+Obj* Program::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
 //
@@ -57,17 +48,10 @@ string Identifier::toString(){
     return value;
 }
 
-Obj* Identifier::eval(Environment* env){
-    Obj* o = env->get(value);
-    if(o == nullptr){
-        if(builtins_map.find(value) == builtins_map.end()){
-            return new ErrorObj("identifier not found " + value);
-        }
-        BuiltinObj* bo = builtins_map[value];
-        return bo;
-    }
-    return o;
+Obj* Identifier::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
+
 //
 
 string LetStatement::tokenLiteral(){
@@ -85,13 +69,8 @@ string LetStatement::toString(){
     return ret;
 }
 
-Obj* LetStatement::eval(Environment* env){
-    Obj* o = value->eval(env);
-    if(isError(o)){
-        return o;
-    }
-    env->set(name->value, o);
-    return o;
+Obj* LetStatement::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
 //
@@ -110,13 +89,8 @@ string ReturnStatement::toString(){
     return ret;
 }
 
-Obj* ReturnStatement::eval(Environment* env){
-    Obj* o = value->eval(env);
-    if (isError(o)) {
-        return o;
-    }
-    ReturnObj* ro = new ReturnObj(o);
-    return ro;
+Obj* ReturnStatement::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
 //
@@ -132,12 +106,8 @@ string ExpressionStatement::toString(){
     return "";
 }
 
-Obj* ExpressionStatement::eval(Environment* env){
-    Obj* o = expression->eval(env);
-    if (isError(o)) {
-        return o;
-    }
-    return o;
+Obj* ExpressionStatement::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
 //
@@ -150,9 +120,8 @@ string IntegerLiteral::toString(){
     return to_string(value);
 }
 
-Obj* IntegerLiteral::eval(Environment* env){
-    IntegerObj* o = new IntegerObj(value);
-    return o;
+Obj* IntegerLiteral::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
 //
@@ -172,9 +141,8 @@ string FunctionLiteral::toString(){
     return ret;
 }
 
-Obj* FunctionLiteral::eval(Environment* env){
-    FunctionObj* fo = new FunctionObj(parameters, body, env);
-    return fo;
+Obj* FunctionLiteral::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
 //
@@ -193,17 +161,8 @@ string ArrayLiteral::toString(){
     return res;
 }
 
-Obj* ArrayLiteral::eval(Environment* env){
-    vector<Obj*> eles = evalExpression(env, elements);
-
-    if(eles.size() == 1 && isError(eles[0])){
-        return eles[0];
-    }
-
-    ArrayObj* ao = new ArrayObj();
-    ao->arr = eles;
-
-    return ao;
+Obj* ArrayLiteral::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
 //
@@ -222,67 +181,8 @@ string IndexExpression::toString(){
     return res;
 }
 
-Obj* IndexExpression::eval(Environment* env){
-    Obj* l = left->eval(env);
-    if(isError(l)){
-        return l;
-    }
-
-    Obj* i = index->eval(env);
-    if(isError(i)){
-        return i;
-    }
-    return evalIndexExpression(l, i);
-}
-
-Obj* evalIndexExpression(Obj* l, Obj* i){
-    ArrayObj* ao = dynamic_cast<ArrayObj*> (l);
-    IntegerObj* io = dynamic_cast<IntegerObj*> (i);
-    if(ao != nullptr && io != nullptr){
-        return evalArrayIndexExpression(ao, io);
-    }
-
-    HashObj* ho = dynamic_cast<HashObj*> (l);
-    if(ho != nullptr){
-        return evalHashIndexExpression(ho, i);
-    }
-
-    return new ErrorObj("thought it was an index expression, but failed");
-}
-
-Obj* evalHashIndexExpression(HashObj* ho, Obj* key){
-    long long h;
-    if(IntegerObj* io = dynamic_cast<IntegerObj*>(key)){
-        h = io->val;
-    }
-    else if(StringObj* so = dynamic_cast<StringObj*>(key)){
-        h = getHashKey(so->val);
-    }
-    else if(BooleanObj* bo = dynamic_cast<BooleanObj*>(key)){
-        h = bo->val;
-    }
-    else{
-        return new ErrorObj("did not find appropriate type");
-    }
-
-    cout<<"hi?";
-    if(ho->pairs.find(h) == ho->pairs.end()){
-        return new NullObj();
-    }
-    return (ho->pairs[h])->val;
-}
-
-// i am casting to object and reverting it back to arrayobj or some other object, is there some point to this?
-Obj* evalArrayIndexExpression(ArrayObj* left, IntegerObj* index){
-    int ind = index->val;
-    vector<Obj*> arrr = left->arr;
-    int len = arrr.size();
-
-    if(ind < 0 || ind >= len){
-        return new NullObj();
-    }
-
-    return arrr[ind];
+Obj* IndexExpression::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
 //
@@ -304,42 +204,8 @@ string HashLiteral::toString(){
     return ret;
 }
 
-Obj* HashLiteral::eval(Environment* env){
-    map<long long, HashPair*> pairsmap;
-
-    for(auto kv : kvmap){
-        Obj* key = kv.first->eval(env);
-        if(isError(key)){
-            return key;
-        }
-
-        //key should be integer, string or boolean
-        long long h;
-        if(IntegerObj* io = dynamic_cast<IntegerObj*>(key)){
-            h = io->val;
-        }
-        else if(StringObj* so = dynamic_cast<StringObj*>(key)){
-            h = getHashKey(so->val);
-        }
-        else if(BooleanObj* bo = dynamic_cast<BooleanObj*>(key)){
-            h = bo->val;
-        }
-        else{
-            return new ErrorObj("did not find appropriate type");
-        }
-
-        Obj* val = kv.second->eval(env);
-        if(isError(val)){
-            return val;
-        }
-
-        HashPair* hp = new HashPair(key, val);
-        pairsmap[h] = hp;
-    }
-
-    HashObj* ho = new HashObj();
-    ho->pairs = pairsmap;
-    return ho;
+Obj* HashLiteral::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
 //
@@ -352,9 +218,8 @@ string StringLiteral::toString(){
     return tok.val;
 }
 
-Obj* StringLiteral::eval(Environment* env){
-    StringObj* so = new StringObj(value);
-    return so;
+Obj* StringLiteral::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
 //
@@ -374,67 +239,8 @@ string CallExpression::toString(){
     return ret;
 }
 
-Obj* CallExpression::eval(Environment* env){
-    Obj* o = function->eval(env);
-    BuiltinObj* bo = dynamic_cast<BuiltinObj*> (o);
-    if(isError(o)){
-        return o;
-    }
-    vector<Obj*> veco = evalExpression(env, args);
-    if(veco.size() == 1 && isError(veco[0])){
-        return veco[0];
-    }
-
-    return applyFunction(o, veco);
-}
-
-Obj* CallExpression::applyFunction(Obj* o, vector<Obj*> vecos){
-    FunctionObj* fo = dynamic_cast<FunctionObj*> (o);
-    if(fo == nullptr){
-        BuiltinObj* bo = dynamic_cast<BuiltinObj*> (o);
-        if(bo == nullptr){
-            return new ErrorObj("Expected builtin/function object, received ?");
-        }
-        else{
-            return bo->functor->call(vecos);
-        }
-    }
-
-    Environment* env = extendFunctionEnv(fo, vecos);
-    Obj* evaled = fo->body->eval(env);
-    return unwrapReturnValue(evaled);
-}
-
-vector<Obj*> evalExpression(Environment* env, vector<Expression*>& args){
-    vector<Obj*> res;
-    for(auto a : args){
-        Obj* o = a->eval(env);
-        if(isError(o)){
-            return vector<Obj*> {o};
-        }
-        res.push_back(o);
-    }
-
-    return res;
-}
-
-Environment* CallExpression::extendFunctionEnv(FunctionObj* fo, vector<Obj*>& args){
-    Environment* newenv = enclose(fo->env);
-
-    for(int i = 0; i < args.size(); i++){
-        newenv->set(fo->parameters[i]->value, args[i]);
-    }
-
-    return newenv;
-}
-
-Obj* CallExpression::unwrapReturnValue(Obj* o){
-    ReturnObj* ro = dynamic_cast<ReturnObj*> (o);
-    if(ro == nullptr){
-        return o;
-    }
-
-    return ro->val;
+Obj* CallExpression::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
 //
@@ -451,57 +257,10 @@ string PrefixExpression::toString(){
     return ret;
 }
 
-Obj* PrefixExpression::eval(Environment* env){
-    Obj* o = right->eval(env);
-    if (isError(o)) {
-        return o;
-    }
-    o = evalOperator(op, o);
-    return o;
+Obj* PrefixExpression::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
-Obj* PrefixExpression::evalOperator(string op, Obj* right){
-    switch (op[0]) {
-        case '!':
-            return evalBang(right);
-        case '-':
-            return evalMinus(right);
-        default:
-            return new ErrorObj("Unknown operator, " + op + right->Inspect());
-    }
-}
-
-Obj* PrefixExpression::evalBang(Obj* right){
-    if(right->Type() == INTEGER_OBJ){
-        IntegerObj* r = dynamic_cast<IntegerObj*> (right);
-        if(r->val != 0){
-            return const_false;
-        }
-        else{
-            return const_true;
-        }
-    }
-
-    BooleanObj* r = dynamic_cast<BooleanObj*> (right);
-    if(r == nullptr){
-        return const_null;
-    }
-    if(r->val){
-        return const_false;
-    }    
-    return const_true;
-}
-
-Obj* PrefixExpression::evalMinus(Obj* right){
-    if(right->Type() == BOOLEAN_OBJ){
-        return new ErrorObj("unknown operator: - " + right->Type());
-    }
-
-    //maybe just change the value, why create new variable?
-    IntegerObj* r = dynamic_cast<IntegerObj*> (right);
-    IntegerObj* newr = new IntegerObj(-(r->val));
-    return newr;
-}
 //
 
 string InfixExpression::tokenLiteral(){
@@ -517,96 +276,8 @@ string InfixExpression::toString(){
     return ret;
 }
 
-Obj* InfixExpression::eval(Environment* env){
-    Obj* r = right->eval(env);
-    if (isError(r)) {
-        return r;
-    }
-    Obj* l = left->eval(env);
-    if (isError(l)) {
-        return l;
-    }
-    return evalInfixExpression(l, r);
-}
-
-Obj* InfixExpression::evalInfixExpression(Obj* l, Obj* r){
-    if(l->Type() == INTEGER_OBJ && r->Type() == INTEGER_OBJ){
-        IntegerObj* il = dynamic_cast<IntegerObj*> (l);
-        IntegerObj* ir = dynamic_cast<IntegerObj*> (r);
-        return evalIntegerInfix(il, ir);
-    }
-    else if(l->Type() == STRING_OBJ && r->Type() == STRING_OBJ){
-        StringObj* sl = dynamic_cast<StringObj*> (l);
-        StringObj* sr = dynamic_cast<StringObj*> (r);
-        return evalStringInfix(sl, sr);
-    }
-    // //their memroy addresses are the same if they are bool
-    if(op == "=="){
-        return nativeBoolToBooleanObj(r == l);
-    }
-    if(op == "!="){
-        return nativeBoolToBooleanObj(r != l);
-    }
-    if(l->Type() != r->Type()){
-        return new ErrorObj("Mismatched Types - " + l->Inspect() + op + r->Inspect());
-    }
-
-    return new ErrorObj("Unknown Operator - " + l->Inspect() + op + r->Inspect());
-}
-
-Obj* InfixExpression::evalIntegerInfix(IntegerObj* il, IntegerObj* ir){
-    IntegerObj* o = nullptr;
-    switch (op[0]){
-        case '+' : 
-            o = new IntegerObj(il->val + ir->val);
-            break;
-        case '-':
-            o = new IntegerObj(il->val - ir->val);
-            break;
-        case '*':
-            o = new IntegerObj(il->val * ir->val);
-            break;
-        case '/':
-            o = new IntegerObj(il->val / ir->val);
-            break;
-        case '<':
-            return nativeBoolToBooleanObj(il->val < ir->val);
-            break;
-        case '>':
-            return nativeBoolToBooleanObj(il->val > ir->val);
-            break;
-        case '=':{
-            if(op[1] == '='){
-                return nativeBoolToBooleanObj(il->val == ir->val);
-            }
-            else{
-                return new ErrorObj("Unknown Opeator - " + il->Inspect() + op + ir->Inspect());        
-            }
-        }
-        case '!':{
-            if(op[1] == '='){
-                return nativeBoolToBooleanObj(il->val != ir->val);
-            }
-            else{
-                return new ErrorObj("Unknown Opeator - " + il->Inspect() + op + ir->Inspect());        
-            }
-        }
-
-        default:
-            return new ErrorObj("Unknown Opeator - " + il->Inspect() + op + ir->Inspect());        
-    }
-    return o;
-}
-
-Obj* InfixExpression::evalStringInfix(StringObj* sl, StringObj* sr){
-    if(op[0] != '+'){
-        return new ErrorObj("String operand other than +, used" + op[0]);
-    }
-    
-    string left = sl->val;
-    string right = sr->val;
-    StringObj* so = new StringObj(left + right);
-    return so;
+Obj* InfixExpression::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
 //
@@ -619,16 +290,10 @@ string Boolean::toString(){
     return tok.val;
 }
 
-Obj* Boolean::eval(Environment* env){
-    return nativeBoolToBooleanObj(value);
+Obj* Boolean::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
-Obj* nativeBoolToBooleanObj(bool value){
-    if(value){
-        return const_true;
-    }
-    return const_false;
-}
 //
 
 string IfExpression::tokenLiteral(){
@@ -650,18 +315,8 @@ string IfExpression::toString(){
     return ret;
 }
 
-Obj* IfExpression::eval(Environment* env){
-    Obj* o = condition->eval(env);
-    if (isError(o)) {
-        return o;
-    }
-    if(isTruthy(o)){
-        return conseq->eval(env);
-    }
-    else if(alt != nullptr){
-        return alt->eval(env);
-    }
-    return const_null;
+Obj* IfExpression::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
 //
@@ -679,15 +334,8 @@ string BlockStatement::toString(){
     return ret;
 }
 
-Obj* BlockStatement::eval(Environment* env){
-    Obj* o = nullptr;
-    for(auto i : stmts){
-        o = i->eval(env);
-        if(o->Type() == RETURN_OBJ || o->Type() == ERROR_OBJ){
-            return o;
-        }
-    }
-    return o;
+Obj* BlockStatement::accept(NodeVisitor& vis, Environment* env){
+    return vis.visit(*this, env);
 }
 
 //
@@ -713,29 +361,3 @@ bool isError(Obj* o){
     }
     return false;
 }
-
-//
-
-FunctionObj::FunctionObj(vector<Identifier*> params, BlockStatement* body, Environment* env){
-    this->parameters = params;
-    this->body = body;
-    this->env = env;
-}
-
-ObjType FunctionObj::Type(){
-    return FUNTION_OBJ;
-}
-
-string FunctionObj::Inspect(){
-    string res = "fn";
-    res += " (";
-    for(auto i : parameters){
-        res += i->toString() + ", ";
-    }
-    res += ") ";
-    res += body->toString();
-
-    return res;
-}
-
-//

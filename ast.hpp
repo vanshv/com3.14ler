@@ -5,14 +5,18 @@
 #include "lexer.hpp"
 #include "obj.hpp"
 #include "builtins.hpp"
+// there are definitely circular dependencies here
+#include "visitor.hpp"
 
 using namespace std;
 
+
+class NodeVisitor;
 class Node{
     public:
         virtual string tokenLiteral() = 0;
         virtual string toString() = 0;
-        virtual Obj* eval(Environment* env) = 0;
+        virtual Obj* accept(NodeVisitor& visitor, Environment* env) = 0;
 };
 
 class Statement : public Node{
@@ -21,7 +25,6 @@ class Statement : public Node{
 class Expression : public Node{
 };
 
-// should Obj* be a class variable?
 class Identifier : public Expression {
     public:
         Token tok;
@@ -30,7 +33,7 @@ class Identifier : public Expression {
         Identifier(Token tok, string value);
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment* env) override;
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
 };
 
 class IntegerLiteral : public Expression{
@@ -40,7 +43,7 @@ class IntegerLiteral : public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment* env) override;
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
 
 };
 
@@ -51,19 +54,12 @@ class BlockStatement: public Statement{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment* env) override;
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
+
 };
 
-class FunctionObj : public Obj{
-    public:
-        vector<Identifier*> parameters;
-        BlockStatement* body;
-        Environment* env;
-
-        FunctionObj (vector<Identifier*>, BlockStatement*, Environment*);
-        ObjType Type() override;
-        string Inspect() override;
-};
+// lol how is this here
+// remove this after removing all the defactored code
 
 class FunctionLiteral : public Expression{
     public:
@@ -73,7 +69,8 @@ class FunctionLiteral : public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment* env) override;
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
+
 };
 
 class StringLiteral : public Expression{
@@ -83,7 +80,8 @@ class StringLiteral : public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment* env) override;
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
+
 };
 
 class CallExpression: public Expression{
@@ -94,10 +92,8 @@ class CallExpression: public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment*) override;
-        Obj* applyFunction(Obj*, vector<Obj*>);
-        Environment* extendFunctionEnv(FunctionObj*, vector<Obj*>&);
-        Obj* unwrapReturnValue(Obj*);
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
+
 };
 
 class PrefixExpression : public Expression{
@@ -108,10 +104,7 @@ class PrefixExpression : public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment* env) override;
-        Obj* evalOperator(string op, Obj* o);
-        Obj* evalBang(Obj* right);
-        Obj* evalMinus(Obj* right);
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
 };
 
 class InfixExpression : public Expression{
@@ -123,10 +116,7 @@ class InfixExpression : public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment* env) override;
-        Obj* evalInfixExpression(Obj* l, Obj* r);
-        Obj* evalIntegerInfix(IntegerObj* l, IntegerObj* r);
-        Obj* evalStringInfix(StringObj* l, StringObj* r);
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
 };
 
 
@@ -140,8 +130,7 @@ class LetStatement : public Statement{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment* env) override;
-
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
 };
 
 class ReturnStatement : public Statement{
@@ -151,7 +140,7 @@ class ReturnStatement : public Statement{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment* env) override;
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
 };
 
 class ArrayLiteral : public Expression{
@@ -161,7 +150,8 @@ class ArrayLiteral : public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment* env) override;
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
+
 };
 
 class IndexExpression : public Expression{
@@ -172,7 +162,8 @@ class IndexExpression : public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment* env) override;
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
+
 };
 
 class HashLiteral : public Expression{
@@ -182,7 +173,8 @@ class HashLiteral : public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment* env) override;
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
+
 };
 
 class ExpressionStatement : public Statement{
@@ -192,7 +184,8 @@ class ExpressionStatement : public Statement{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment* env) override;
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
+
 };
 
 class Boolean : public Expression{
@@ -202,7 +195,8 @@ class Boolean : public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment* env) override;
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
+
 };
 
 //why is if an expression? what does it return?
@@ -215,7 +209,8 @@ class IfExpression: public Expression{
 
         string tokenLiteral() override;
         string toString() override;
-        Obj* eval(Environment* env) override;
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
+
 };
 
 class Program : public Node{
@@ -224,14 +219,9 @@ class Program : public Node{
 
         string tokenLiteral() override;  
         string toString() override;
-        Obj* eval(Environment* env) override;
+        Obj* accept(NodeVisitor& vis, Environment* env) override;
 };
 
-vector<Obj*> evalExpression(Environment*, vector<Expression*>&);
-Obj* evalArrayIndexExpression(ArrayObj* left, IntegerObj* index);
-Obj* evalHashIndexExpression(HashObj* left, Obj* index);
-Obj* evalIndexExpression(Obj* l, Obj* i);
-Obj* nativeBoolToBooleanObj(bool value);
 bool isTruthy(Obj* o);
 bool isError(Obj* o);
 

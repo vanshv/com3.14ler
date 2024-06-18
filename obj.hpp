@@ -2,6 +2,7 @@
 #define OBJ_H
 
 #include <bits/stdc++.h>
+#include "ast.hpp"
 using namespace std;
 
 enum ObjType {
@@ -77,6 +78,17 @@ class StringObj : public Obj{
         string val;
 
         StringObj(string str);
+        ObjType Type() override;
+        string Inspect() override;
+};
+
+class FunctionObj : public Obj{
+    public:
+        vector<Identifier*> parameters;
+        BlockStatement* body;
+        Environment* env;
+
+        FunctionObj (vector<Identifier*>, BlockStatement*, Environment*);
         ObjType Type() override;
         string Inspect() override;
 };

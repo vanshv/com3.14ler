@@ -4,18 +4,20 @@
 #include "lexer.hpp"
 #include "ast.hpp"
 
+// will assign values in increasing order from 0
+// do not need to set them explicitly
+// higher precedence is evaluated first
 enum Prenum {
-    LOWEST = 0, 
-    EQUALS = 1,
-    LESSGREATER = 2,
-    SUM = 3,
-    PRODUCT = 4,
-    PREFIX = 5,
-    CALL = 6,
-    //might need to check this
-    INDEX = 7,
+    LOWEST, 
+    EQUALS,
+    LESSGREATER,
+    SUM,
+    PRODUCT,
+    PREFIX,
+    CALL,
+    //might need to confirm index's location
+    INDEX,
 };
-//higher precedence is evaluated first
 
 class Parser{
     public:

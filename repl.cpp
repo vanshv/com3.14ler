@@ -2,10 +2,14 @@
 #include <string>
 #include <sstream>
 #include "parser.hpp"
+#include "evalVisitor.hpp"
 
 using namespace std;
 
 const string PROMPT = ">> ";
+
+// compile like this - get rid of circular dependencies
+// then compile with EvalVisitor
 
 int main() {
     string line;
@@ -13,6 +17,7 @@ int main() {
 
     Environment* env = new Environment();
     set_builtins();
+    EvalVisitor evalvis;
     while (getline(cin, line)) {
         Lexer* l = new Lexer(line);
         Parser* p = new Parser(l);
@@ -21,16 +26,11 @@ int main() {
             cout<<"errors found\n";
             continue;
         }
-        // for(auto i : prog->statements){
-        //     cout<<i->toString()<<"\n";
-        // }
 
-        Obj* o = prog->eval(env);
-        cout<<o->Inspect();
-        // for(auto i : prog->statements){
-        //     cout<<o->Inspect()<<"\n";
-        // }
-
+        // Obj* o = prog->eval(env);
+        Obj* o = prog->accept(evalvis, env);
+        
+        cout << o->Inspect();
         cout << "\n" << PROMPT;
     }
 

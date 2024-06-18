@@ -90,6 +90,30 @@ string StringObj::Inspect(){
 
 //
 
+FunctionObj::FunctionObj(vector<Identifier*> params, BlockStatement* body, Environment* env){
+    this->parameters = params;
+    this->body = body;
+    this->env = env;
+}
+
+ObjType FunctionObj::Type(){
+    return FUNTION_OBJ;
+}
+
+string FunctionObj::Inspect(){
+    string res = "fn";
+    res += " (";
+    for(auto i : parameters){
+        res += i->toString() + ", ";
+    }
+    res += ") ";
+    res += body->toString();
+
+    return res;
+}
+
+//
+
 BuiltinObj::BuiltinObj(BuiltinFunc* f){
     this->functor = f;
 }
@@ -121,18 +145,6 @@ string ArrayObj::Inspect(){
 
     return res;
 }
-
-//
-
-// HashKey::HashKey(bool b){
-//     val = b;
-// }
-// HashKey::HashKey(int i){
-//     val = i;
-// }
-// HashKey::HashKey(string s){
-//     val = hash<string>{} (s);
-// }
 
 long long getHashKey(string s){
     return hash<string>{} (s);
